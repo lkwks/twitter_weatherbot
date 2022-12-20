@@ -52,7 +52,7 @@ def get_weather_msg() -> str:
 
     version_list: list = get_json("getFcstVersion", params_ver)
     base_time: str = version_list[0]['version'][8:12]
-    print(version_list)
+    print(base_time)
 
     params: dict = {'serviceKey' : serviceKey,
              'pageNo' : '1', 
@@ -72,7 +72,7 @@ def get_weather_msg() -> str:
     # 강수량: PCP, SNO
     # 낮최고기온: TMX
 
-    pour_info = [(0, 0, 0), (0, 0, 0)]
+    pour_info = [[0, 0, 0], [0, 0, 0]]
     temp_9 = [0, 0]
     temp_max = [0, 0]
     
