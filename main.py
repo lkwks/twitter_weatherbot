@@ -52,7 +52,6 @@ def get_weather_msg() -> str:
 
     version_list: list = get_json("getFcstVersion", params_ver)
     base_time: str = version_list[0]['version'][8:12]
-    print(base_time)
 
     params: dict = {'serviceKey' : serviceKey,
              'pageNo' : '1', 
@@ -96,7 +95,7 @@ def get_weather_msg() -> str:
         if item['category'] == "TMX": 
             temp_max[day_diff] = item['fcstValue'] 
 
-        if item['fcstTime'] == "0900":
+        if item['category'] == "TMP" and item['fcstTime'] == "0900":
             temp_9[day_diff] = item['fctValue']
 
     result = ["", ""]
