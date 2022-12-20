@@ -52,7 +52,7 @@ def get_weather_msg() -> str:
 
     version_list: list = get_json("getFcstVersion", params_ver)
     base_time: str = version_list[0]['version'][8:12]
-    print(version_dict)
+    print(version_list)
 
     params: dict = {'serviceKey' : serviceKey,
              'pageNo' : '1', 
