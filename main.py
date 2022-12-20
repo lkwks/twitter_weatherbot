@@ -23,16 +23,37 @@ def get_pty_str(day_str: str, tup: tuple) -> str:
     pty_str = {1: "비가", 2: "비와 눈이", 3: "눈이", 4: "소나기가"}
     return f"{day_str}은 {pty_str[tup[0]]} 옵니다. 강수확률은 {tup[1]}%이며, 강수량은 최대 {tup[2]}mm 입니다. "
 
+def get_json(uri: str, params: dict) -> dict:
+    try: 
+        response = requests.get("http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/" + uri, params=params)
+        res_json: dict = response.json()
+        if res_json['response']['header']['resultCode'] != "00":
+            raise Exception(res_json['response']['header']['resultMsg'])
+        res_item = res_json['response']['body']['items']['item']
+    except Exception as e:
+        print(e)
+        raise
+    return res_item
+
 def get_weather_msg() -> str:
     now_date = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
-    base_time: str = now_date.strftime('%H%M')
     base_date: str = now_date.strftime('%Y%m%d')
+    basedatetime: str = now_date.strftime('%Y%m%d%H%M')
     fcst_x: str = environ["fcst_x"]
-    fcst_y: str = environ["fcst_y"] 
+    fcst_y: str = environ["fcst_y"]
     serviceKey: str = environ["serviceKey"]
-    url: str = environ["api_url"]
-    
-    params: dict ={'serviceKey' : serviceKey,
+            
+    params_ver: dict = {'serviceKey': serviceKey, 
+                        'numOfRows': '10', 
+                        'pageNo': '1', 
+                        'dataType': 'JSON', 
+                        'ftype': 'SHRT', 
+                        'basedatetime': basedatetime}
+
+    version_dict: dict = get_json("getFcstVersion", params_ver)
+    base_time: str = version_dict[8:12]
+
+    params: dict = {'serviceKey' : serviceKey,
              'pageNo' : '1', 
           'numOfRows' : '1000', 
            'dataType' : 'JSON', 
@@ -40,19 +61,7 @@ def get_weather_msg() -> str:
           'base_time' : base_time,
                  'nx' : fcst_x, 
                  'ny' : fcst_y }
-
-    try: 
-        response = requests.get(url, params=params)
-        res_json: dict = response.json()
-        print(base_date, base_time, res_json)
-        if res_json['response']['header']['resultCode'] != "00":
-            raise Exception(res_json['response']['header']['resultMsg'])
-        res_item = res_json['response']['body']['items']['item']
-    except Exception as e:
-        print(e)
-        raise
-
-
+    
     # 오늘/내일 비눈소식, 강수확률, 강수량, 내일 아침기온, 내일 낮최고기온 정도만 추출하면 됨.
     # 현재 시간이 낮 12시 이전이라면 오늘꺼만 출력해도 됨. 
     # 현재 시간이 낮 12시부터 저녁 6시 사이라면 오늘, 내일 모두 출력해야.
@@ -66,7 +75,7 @@ def get_weather_msg() -> str:
     temp_9 = [0, 0]
     temp_max = [0, 0]
     
-    for item in res_item:
+    for item in get_json("getVilageFcst", params):
 
         day_diff = day_difference(item['fcstDate'], base_date)
         if day_diff == 2 or (is_now_before_than(base_time, "1200") and day_diff == 1): break
