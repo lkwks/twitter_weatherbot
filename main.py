@@ -44,9 +44,9 @@ def get_weather_msg() -> str:
     try: 
         response = requests.get(url, params=params)
         res_json: dict = response.json()
-        print(res_json)
+        print(base_date, base_time, res_json)
         if res_json['response']['header']['resultCode'] != "00":
-            raise Exception(f"result exception: {res_json['response']['header']['resultMsg']}")
+            raise Exception(res_json['response']['header']['resultMsg'])
         res_item = res_json['response']['body']['items']['item']
     except Exception as e:
         print(e)
