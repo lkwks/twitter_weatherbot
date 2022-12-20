@@ -23,7 +23,7 @@ def get_pty_str(day_str: str, tup: tuple) -> str:
     pty_str = {1: "비가", 2: "비와 눈이", 3: "눈이", 4: "소나기가"}
     return f"{day_str}은 {pty_str[tup[0]]} 옵니다. 강수확률은 {tup[1]}%이며, 강수량은 최대 {tup[2]}mm 입니다. "
 
-def get_json(uri: str, params: dict) -> dict:
+def get_json(uri: str, params: dict) -> list:
     try: 
         response = requests.get("http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/" + uri, params=params)
         res_json: dict = response.json()
@@ -50,8 +50,9 @@ def get_weather_msg() -> str:
                         'ftype': 'SHRT', 
                         'basedatetime': basedatetime}
 
-    version_dict: dict = get_json("getFcstVersion", params_ver)
-    base_time: str = version_dict[8:12]
+    version_list: list = get_json("getFcstVersion", params_ver)
+    base_time: str = version_list[0]['version'][8:12]
+    print(version_dict)
 
     params: dict = {'serviceKey' : serviceKey,
              'pageNo' : '1', 
