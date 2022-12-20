@@ -1,16 +1,7 @@
-import tweepy, datetime, requests, pytz, re
+import datetime, requests, pytz, re
 from os import environ
 
-fcst_x: str = environ["fcst_x"]
-fcst_y: str = environ["fcst_y"]
-serviceKey: str = environ["serviceKey"]
 
-
-def weather_update(weather_msg: str) -> None:
-    auth = tweepy.OAuthHandler(environ["consumer_key"], environ["consumer_secret"])
-    auth.set_access_token(environ["access_token"], environ["access_token_secret"])
-    api = tweepy.API(auth)
-    api.update_status(status=weather_msg)
 
 def day_difference(date1: str, date2: str) -> bool:
     strp_date1 = datetime.datetime.strptime(date1, "%Y%m%d")
@@ -24,9 +15,9 @@ def is_now_before_than(base_time: str, comp_time: str) -> bool:
     return strp_now < strp_comp
 
 def get_pty_str(day_str: str, tup: list) -> str:
-    if tup[0] == 0: return ""
-    pty_str = {1: "비가", 2: "비와 눈이", 3: "눈이", 4: "소나기가"}
-    return f"{day_str}은 {pty_str[tup[0]]} 옵니다. 강수확률은 {tup[1]}%이며, 강수량은 최대 {tup[2]}mm 입니다. "
+    if tup[0] == "0": return ""
+    pty_str = {"1": "비가", "2": "비와 눈이", "3": "눈이", "4": "소나기가"}
+    return f"{day_str}은 {pty_str[tup[0]]} 옵니다. 강수확률은 {tup[1]}%이며, 강수량은 최대 {tup[2]} 입니다. "
 
 def get_json(uri: str, params: dict) -> list:
     try: 
@@ -41,9 +32,13 @@ def get_json(uri: str, params: dict) -> list:
     return res_item
 
 def max_num(num1_str: str, num2_str: str) -> str:
-     num1 = float(re.search(r'\d+\.\d+', num1_str).group())
-     num2 = float(re.search(r'\d+\.\d+', num2_str).group())
-     return num1_str if num1 > num2 else num2_str
+    try:
+        num1 = float(re.search(r'[+-]?\d+\.\d+|[+-]?\d+', num1_str).group())
+        num2 = float(re.search(r'[+-]?\d+\.\d+|[+-]?\d+', num2_str).group())
+        return num1_str if num1 > num2 else num2_str
+    except Exception as e:
+        print(f"Invailid string in API: {e}")
+        return "0"
 
 def get_weather_msg() -> str:
     now_date = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
@@ -64,8 +59,8 @@ def get_weather_msg() -> str:
              'pageNo' : '1', 
           'numOfRows' : '1000', 
            'dataType' : 'JSON', 
-          'base_date' : base_date,
-          'base_time' : base_time,
+          'base_date' : "20221220",
+          'base_time' : "2300",
                  'nx' : fcst_x, 
                  'ny' : fcst_y }
     
@@ -78,9 +73,9 @@ def get_weather_msg() -> str:
     # 강수량: PCP, SNO
     # 낮최고기온: TMX
 
-    pour_info = [[0, 0, 0], [0, 0, 0]]
-    temp_9 = [0, 0]
-    temp_max = [0, 0]
+    pour_info = [["0", "-99", "-99"], ["0", "-99", "-99"]]
+    temp_9 = ["-99", "-99"]
+    temp_max = ["-99", "-99"]
     
     for item in get_json("getVilageFcst", params):
 
@@ -88,7 +83,7 @@ def get_weather_msg() -> str:
         if day_diff == 2 or (is_now_before_than(base_time, "1200") and day_diff == 1): break
 
         if item['category'] == "PTY" and item['fcstValue'] != "0": # 오늘/내일 중 한번이라도 눈/비 소식이 있다면 무조건 그 정보를 기록한다.
-            pour_info[day_diff][0] = item['fcstValue']
+            pour_info[day_diff][0] = max_num(pour_info[day_diff][0], item['fcstValue'])
 
         if item['category'] == "POP" and item['fcstValue'] != "0": 
             pour_info[day_diff][1] = max_num(pour_info[day_diff][1], item['fcstValue'])
@@ -100,11 +95,13 @@ def get_weather_msg() -> str:
             pour_info[day_diff][2] = max_num(pour_info[day_diff][2], item['fcstValue'])
 
         if item['category'] == "TMX": 
-            temp_max[day_diff] = item['fcstValue'] 
+            print(temp_max[day_diff], item['fcstValue'], item)
+            temp_max[day_diff] = max_num(temp_max[day_diff], item['fcstValue'])
 
         if item['category'] == "TMP" and item['fcstTime'] == "0900":
-            temp_9[day_diff] = item['fctValue']
+            temp_9[day_diff] = item['fcstValue']
 
+    print(temp_9, temp_max)
     result = ["", ""]
 
     for i, day_str in enumerate(["오늘", "내일"]):
@@ -121,4 +118,5 @@ def get_weather_msg() -> str:
         return ' '.join(result)
 
 weather_msg = get_weather_msg()
-weather_update(weather_msg)
+print(weather_msg)
+#weather_update(weather_msg)
