@@ -1,5 +1,10 @@
-import tweepy, datetime, requests, pytz
+import tweepy, datetime, requests, pytz, re
 from os import environ
+
+fcst_x: str = environ["fcst_x"]
+fcst_y: str = environ["fcst_y"]
+serviceKey: str = environ["serviceKey"]
+
 
 def weather_update(weather_msg: str) -> None:
     auth = tweepy.OAuthHandler(environ["consumer_key"], environ["consumer_secret"])
@@ -18,7 +23,7 @@ def is_now_before_than(base_time: str, comp_time: str) -> bool:
     strp_comp = datetime.datetime.strptime(comp_time, "%H%M")
     return strp_now < strp_comp
 
-def get_pty_str(day_str: str, tup: tuple) -> str:
+def get_pty_str(day_str: str, tup: list) -> str:
     if tup[0] == 0: return ""
     pty_str = {1: "비가", 2: "비와 눈이", 3: "눈이", 4: "소나기가"}
     return f"{day_str}은 {pty_str[tup[0]]} 옵니다. 강수확률은 {tup[1]}%이며, 강수량은 최대 {tup[2]}mm 입니다. "
@@ -35,13 +40,15 @@ def get_json(uri: str, params: dict) -> list:
         raise
     return res_item
 
+def max_num(num1_str: str, num2_str: str) -> str:
+     num1 = float(re.search(r'\d+\.\d+', num1_str).group())
+     num2 = float(re.search(r'\d+\.\d+', num2_str).group())
+     return num1_str if num1 > num2 else num2_str
+
 def get_weather_msg() -> str:
     now_date = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
     base_date: str = now_date.strftime('%Y%m%d')
     basedatetime: str = now_date.strftime('%Y%m%d%H%M')
-    fcst_x: str = environ["fcst_x"]
-    fcst_y: str = environ["fcst_y"]
-    serviceKey: str = environ["serviceKey"]
             
     params_ver: dict = {'serviceKey': serviceKey, 
                         'numOfRows': '10', 
@@ -84,13 +91,13 @@ def get_weather_msg() -> str:
             pour_info[day_diff][0] = item['fcstValue']
 
         if item['category'] == "POP" and item['fcstValue'] != "0": 
-            pour_info[day_diff][1] = item['fcstValue'] 
+            pour_info[day_diff][1] = max_num(pour_info[day_diff][1], item['fcstValue'])
 
         if item['category'] == "PCP" and item['fcstValue'] != "강수없음": 
-            pour_info[day_diff][2] = max(pour_info[day_diff][2], item['fcstValue'])
+            pour_info[day_diff][2] = max_num(pour_info[day_diff][2], item['fcstValue'])
 
         if item['category'] == "SNO" and item['fcstValue'] != "적설없음": 
-            pour_info[day_diff][2] = max(pour_info[day_diff][2], item['fcstValue'])
+            pour_info[day_diff][2] = max_num(pour_info[day_diff][2], item['fcstValue'])
 
         if item['category'] == "TMX": 
             temp_max[day_diff] = item['fcstValue'] 
@@ -102,9 +109,9 @@ def get_weather_msg() -> str:
 
     for i, day_str in enumerate(["오늘", "내일"]):
         if (i == 0 and is_now_before_than(base_time, "0900")) or i == 1:
-            result[i] = f"{get_pty_str(day_str, pour_info[1])}{day_str}의 아침기온은 {temp_9[i]}℃이며, {day_str}의 낮 최고기온은 {temp_max[i]}℃ 입니다."
+            result[i] = f"{get_pty_str(day_str, pour_info[i])}{day_str}의 아침기온은 {temp_9[i]}℃이며, {day_str}의 낮 최고기온은 {temp_max[i]}℃ 입니다."
         else:
-            result[i] = f"{get_pty_str(day_str, pour_info[0])}{day_str}의 낮 최고기온은 {temp_max[0]}℃ 입니다."
+            result[i] = f"{get_pty_str(day_str, pour_info[i])}{day_str}의 낮 최고기온은 {temp_max[i]}℃ 입니다."
 
     if is_now_before_than(base_time, "1200"):
         return result[0]
