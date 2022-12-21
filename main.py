@@ -14,7 +14,10 @@ def weather_update(weather_msg: str) -> None:
     auth = tweepy.OAuthHandler(environ["consumer_key"], environ["consumer_secret"])
     auth.set_access_token(environ["access_token"], environ["access_token_secret"])
     api = tweepy.API(auth)
-    api.update_status(status=weather_msg)
+    try:
+        api.update_status(status=weather_msg)
+    except Exception as e:
+        print(e)
 
 def day_difference(date1: str, date2: str) -> bool:
     strp_date1 = datetime.datetime.strptime(date1, "%Y%m%d")
