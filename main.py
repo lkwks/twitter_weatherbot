@@ -1,7 +1,12 @@
-import datetime, requests, pytz, re
+import tweepy, datetime, requests, pytz, re
 from os import environ
 
+fcst_x: str = environ["fcst_x"]
+fcst_y: str = environ["fcst_y"]
+serviceKey: str = environ["serviceKey"]
 
+now_date = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
+pty_str = {"1": "비가", "2": "비와 눈이", "3": "눈이", "4": "소나기가"}
 
 def day_difference(date1: str, date2: str) -> bool:
     strp_date1 = datetime.datetime.strptime(date1, "%Y%m%d")
@@ -16,7 +21,6 @@ def is_now_before_than(base_time: str, comp_time: str) -> bool:
 
 def get_pty_str(day_str: str, tup: list) -> str:
     if tup[0] == "0": return ""
-    pty_str = {"1": "비가", "2": "비와 눈이", "3": "눈이", "4": "소나기가"}
     return f"{day_str}은 {pty_str[tup[0]]} 옵니다. 강수확률은 {tup[1]}%이며, 강수량은 최대 {tup[2]} 입니다. "
 
 def get_json(uri: str, params: dict) -> list:
@@ -40,27 +44,26 @@ def max_num(num1_str: str, num2_str: str) -> str:
         print(f"Invailid string in API: {e}")
         return "0"
 
-def get_weather_msg() -> str:
-    now_date = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
+def get_msg() -> str:
+    
     base_date: str = now_date.strftime('%Y%m%d')
-    basedatetime: str = now_date.strftime('%Y%m%d%H%M')
-            
-    params_ver: dict = {'serviceKey': serviceKey, 
-                        'numOfRows': '10', 
-                        'pageNo': '1', 
-                        'dataType': 'JSON', 
-                        'ftype': 'SHRT', 
-                        'basedatetime': basedatetime}
 
-    version_list: list = get_json("getFcstVersion", params_ver)
-    base_time: str = version_list[0]['version'][8:12]
+    n_hour, n_min = now_date.hour, now_date.minute
+    time_num = ((n_hour * 60 + n_min - 130)//180)*180+130
+
+    if time_num < 0: 
+        time_num = 1390
+        base_date = (now_date - datetime.timedelta(days=1)).strftime('%Y%m%d')
+
+    base_hour, base_minute = divmod(time_num, 60)
+    base_time = f"{base_hour:02d}{base_minute:02d}"
 
     params: dict = {'serviceKey' : serviceKey,
              'pageNo' : '1', 
           'numOfRows' : '1000', 
            'dataType' : 'JSON', 
-          'base_date' : "20221220",
-          'base_time' : "2300",
+          'base_date' : base_date,
+          'base_time' : base_time,
                  'nx' : fcst_x, 
                  'ny' : fcst_y }
     
@@ -76,6 +79,10 @@ def get_weather_msg() -> str:
     pour_info = [["0", "-99", "-99"], ["0", "-99", "-99"]]
     temp_9 = ["-99", "-99"]
     temp_max = ["-99", "-99"]
+    base_date = now_date.strftime('%Y%m%d')
+    base_time = now_date.strftime('%H%M')
+    now_weather_msg = ""
+    now_weather_checked = False
     
     for item in get_json("getVilageFcst", params):
 
@@ -94,14 +101,17 @@ def get_weather_msg() -> str:
         if item['category'] == "SNO" and item['fcstValue'] != "적설없음": 
             pour_info[day_diff][2] = max_num(pour_info[day_diff][2], item['fcstValue'])
 
-        if item['category'] == "TMX": 
-            print(temp_max[day_diff], item['fcstValue'], item)
+        if item['category'] == "PTY" and now_weather_checked == False:
+            if item['fcstValue'] != "0":
+                now_weather_msg = f"현재 {pty_str[item['fcstValue']]} 옵니다."
+            now_weather_checked = True 
+
+        if item['category'] == "TMP" and item['fcstTime'] == "1500":
             temp_max[day_diff] = max_num(temp_max[day_diff], item['fcstValue'])
 
         if item['category'] == "TMP" and item['fcstTime'] == "0900":
             temp_9[day_diff] = item['fcstValue']
 
-    print(temp_9, temp_max)
     result = ["", ""]
 
     for i, day_str in enumerate(["오늘", "내일"]):
@@ -110,13 +120,16 @@ def get_weather_msg() -> str:
         else:
             result[i] = f"{get_pty_str(day_str, pour_info[i])}{day_str}의 낮 최고기온은 {temp_max[i]}℃ 입니다."
 
+    forecast_msg = ""
     if is_now_before_than(base_time, "1200"):
-        return result[0]
+        forecast_msg = result[0]
     elif is_now_before_than(base_time, "1800") == False:
-        return result[1]
+        forecast_msg = result[1]
     else:
-        return ' '.join(result)
+        forecast_msg = ' '.join(result)
 
-weather_msg = get_weather_msg()
-print(weather_msg)
-#weather_update(weather_msg)
+    weather_update(now_weather_msg)
+    weather_update(forecast_msg)
+
+
+get_msg()
