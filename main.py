@@ -8,6 +8,13 @@ serviceKey: str = environ["serviceKey"]
 now_date = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
 pty_str = {"1": "비가", "2": "비와 눈이", "3": "눈이", "4": "소나기가"}
 
+
+def weather_update(weather_msg: str) -> None:
+    auth = tweepy.OAuthHandler(environ["consumer_key"], environ["consumer_secret"])
+    auth.set_access_token(environ["access_token"], environ["access_token_secret"])
+    api = tweepy.API(auth)
+    api.update_status(status=weather_msg)
+
 def day_difference(date1: str, date2: str) -> bool:
     strp_date1 = datetime.datetime.strptime(date1, "%Y%m%d")
     strp_date2 = datetime.datetime.strptime(date2, "%Y%m%d")
