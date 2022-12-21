@@ -10,6 +10,7 @@ pty_str = {"1": "비가", "2": "비와 눈이", "3": "눈이", "4": "소나기�
 
 
 def weather_update(weather_msg: str) -> None:
+    if weather_msg == "": return
     auth = tweepy.OAuthHandler(environ["consumer_key"], environ["consumer_secret"])
     auth.set_access_token(environ["access_token"], environ["access_token_secret"])
     api = tweepy.API(auth)
