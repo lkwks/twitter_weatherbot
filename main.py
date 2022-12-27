@@ -105,7 +105,7 @@ def get_msg() -> str:
 
         if item['category'] == "POP" and item['fcstValue'] != "0": 
             pour_info[day_diff][1] = max_num(pour_info[day_diff][1], item['fcstValue'])
-            if int(item['fcstTime'][:2]) > int(pour_info[day_diff][3]) and pour_info[day_diff][4] == "" and int(item['fcstValue']) < 30:
+            if pour_info[day_diff][3] != "" and int(item['fcstTime'][:2]) > int(pour_info[day_diff][3]) and pour_info[day_diff][4] == "" and int(item['fcstValue']) < 30:
                 pour_info[day_diff][4] = item['fcstTime'][:2]
 
         if (item['category'] == "PCP" and item['fcstValue'] != "강수없음") or (item['category'] == "SNO" and item['fcstValue'] != "적설없음"): 
