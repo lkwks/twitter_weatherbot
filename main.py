@@ -32,7 +32,7 @@ def is_now_before_than(base_time: str, comp_time: str) -> bool:
 
 def get_pty_str(day_str: str, tup: list) -> str:
     if tup[0] == "0": return ""
-    return f"{day_str}은 {pty_str[tup[0]]} 옵니다. 강수확률은 {tup[1]}%이며, 강수량은 최대 {tup[2]} 입니다. "
+    return f"{day_str}은 {pty_str[tup[0]]} 옵니다. 강수확률은 {tup[1]}%이며({tup[3]}시경), {'강수' if tup[0] != '3' else '적설'}량은 최대 {tup[2]} 입니다. {tup[4]}시경 잦아들 것으로 예상됩니다. "
 
 def get_json(uri: str, params: dict) -> list:
     try: 
@@ -87,7 +87,7 @@ def get_msg() -> str:
     # 강수량: PCP, SNO
     # 낮최고기온: TMX
 
-    pour_info = [["0", "-99", "-99"], ["0", "-99", "-99"]]
+    pour_info = [["0", "-99", "-99", "", ""], ["0", "-99", "-99", "", ""]]
     temp_9 = ["-99", "-99"]
     temp_max = ["-99", "-99"]
     base_date = now_date.strftime('%Y%m%d')
@@ -106,11 +106,12 @@ def get_msg() -> str:
         if item['category'] == "POP" and item['fcstValue'] != "0": 
             pour_info[day_diff][1] = max_num(pour_info[day_diff][1], item['fcstValue'])
 
-        if item['category'] == "PCP" and item['fcstValue'] != "강수없음": 
-            pour_info[day_diff][2] = max_num(pour_info[day_diff][2], item['fcstValue'])
-
-        if item['category'] == "SNO" and item['fcstValue'] != "적설없음": 
-            pour_info[day_diff][2] = max_num(pour_info[day_diff][2], item['fcstValue'])
+        if (item['category'] == "PCP" and item['fcstValue'] != "강수없음") or (item['category'] == "SNO" and item['fcstValue'] != "적설없음"): 
+            if item['fcstValue'] == max_num(pour_info[day_diff][2], item['fcstValue']):
+                pour_info[day_diff][2] = item['fcstValue']
+                pour_info[day_diff][3] = item['fcstTime'][:2]
+            elif pour_info[day_diff][4] == "" and int(re.search(r'[+-]?\d+\.\d+|[+-]?\d+', item['fcstValue']).group()) < 30:
+                pour_info[day_diff][4] = item['fcstTime'][:2]
 
         if item['category'] == "PTY" and now_weather_checked == False:
             if item['fcstValue'] != "0":
