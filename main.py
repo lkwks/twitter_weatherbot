@@ -105,13 +105,13 @@ def get_msg() -> str:
 
         if item['category'] == "POP" and item['fcstValue'] != "0": 
             pour_info[day_diff][1] = max_num(pour_info[day_diff][1], item['fcstValue'])
+            if int(item['fcstTime'][:2]) > int(pour_info[day_diff][3]) and pour_info[day_diff][4] == "" and int(item['fcstValue']) < 30:
+                pour_info[day_diff][4] = item['fcstTime'][:2]
 
         if (item['category'] == "PCP" and item['fcstValue'] != "강수없음") or (item['category'] == "SNO" and item['fcstValue'] != "적설없음"): 
             if item['fcstValue'] == max_num(pour_info[day_diff][2], item['fcstValue']):
                 pour_info[day_diff][2] = item['fcstValue']
                 pour_info[day_diff][3] = item['fcstTime'][:2]
-            elif pour_info[day_diff][4] == "" and int(re.search(r'[+-]?\d+\.\d+|[+-]?\d+', item['fcstValue']).group()) < 30:
-                pour_info[day_diff][4] = item['fcstTime'][:2]
 
         if item['category'] == "PTY" and now_weather_checked == False:
             if item['fcstValue'] != "0":
