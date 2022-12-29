@@ -159,11 +159,11 @@ def get_now_msg() -> str:
     
     if n_min >= 40:
         base_time = f"{n_hour:02d}00"
-    else:
+    elif n_nour > 0:
         base_time = f"{(n_hour-1):02d}00"
-        if base_hour < 0:
-            base_hour = 23
-            base_date = (now_date - datetime.timedelta(days=1)).strftime('%Y%m%d')
+    else:
+        base_time = "2300"
+        base_date = (now_date - datetime.timedelta(days=1)).strftime('%Y%m%d')
 
     params: dict = {'serviceKey' : serviceKey,
              'pageNo' : '1', 
