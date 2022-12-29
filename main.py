@@ -133,10 +133,10 @@ def get_msg() -> str:
                 now_weather_msg = f"현재 {pty_str[ival]} 옵니다."
             now_weather_checked = True 
 
-        if icat == "TMP" and itime == "1500": # 낮 최고기온
+        if icat == "TMP" and itime == 15: # 낮 최고기온
             temp_max[day_diff] = max_num(temp_max[day_diff], ival)
 
-        if icat == "TMP" and itime == "0900": # 아침기온
+        if icat == "TMP" and itime == 9: # 아침기온
             temp_9[day_diff] = ival
 
     result = ["", ""]
