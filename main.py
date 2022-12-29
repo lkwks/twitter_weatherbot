@@ -6,7 +6,6 @@ fcst_y: str = environ["fcst_y"]
 serviceKey: str = environ["serviceKey"]
 
 now_date = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
-base_date: str = now_date.strftime('%Y%m%d')
 n_hour, n_min = now_date.hour, now_date.minute
 pty_str = {"1": "비가", "2": "비와 눈이", "3": "눈이", "4": "소나기가"}
 pty_str_np = {"1": "비", "2": "비와 눈", "3": "눈", "4": "소나기"}
@@ -72,6 +71,7 @@ def max_num(num1_str: str, num2_str: str) -> str:
 
 def get_forecast_msg() -> str:
     
+    base_date: str = now_date.strftime('%Y%m%d')
     time_num = ((n_hour * 60 + n_min - 130)//180)*180+130
     if time_num < 0: 
         time_num = 1390
