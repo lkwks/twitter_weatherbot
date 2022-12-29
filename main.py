@@ -6,6 +6,8 @@ fcst_y: str = environ["fcst_y"]
 serviceKey: str = environ["serviceKey"]
 
 now_date = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
+base_date: str = now_date.strftime('%Y%m%d')
+n_hour, n_min = now_date.hour, now_date.minute
 pty_str = {"1": "비가", "2": "비와 눈이", "3": "눈이", "4": "소나기가"}
 pty_str_np = {"1": "비", "2": "비와 눈", "3": "눈", "4": "소나기"}
 
@@ -68,13 +70,9 @@ def max_num(num1_str: str, num2_str: str) -> str:
         print(f"Invailid string in API: {e}")
         return "0"
 
-def get_msg() -> str:
+def get_forecast_msg() -> str:
     
-    base_date: str = now_date.strftime('%Y%m%d')
-
-    n_hour, n_min = now_date.hour, now_date.minute
     time_num = ((n_hour * 60 + n_min - 130)//180)*180+130
-
     if time_num < 0: 
         time_num = 1390
         base_date = (now_date - datetime.timedelta(days=1)).strftime('%Y%m%d')
@@ -105,8 +103,6 @@ def get_msg() -> str:
     temp_max = ["-99", "-99"]
     base_date = now_date.strftime('%Y%m%d')
     base_time = now_date.strftime('%H%M')
-    now_weather_msg = ""
-    now_weather_checked = False
     
     for item in get_json("getVilageFcst", params):
 
@@ -117,21 +113,18 @@ def get_msg() -> str:
         if icat == "PTY" and ival != "0": # 오늘/내일 중 한번이라도 눈/비 소식이 있다면 무조건 그 정보를 기록한다.
             pour_info[day_diff]["PTY"] = ival if "PTY" not in pour_info[day_diff] else max_num(pour_info[day_diff]["PTY"], ival)
 
-        if icat == "POP" and ival != "0": # 강수확률
-            if "POP" not in pour_info[day_diff] or ival == max_num(pour_info[day_diff]["POP"], ival):
+        if icat == "POP": # 강수확률
+            if ("POP" not in pour_info[day_diff] or ival == max_num(pour_info[day_diff]["POP"], ival)) and ival != "0":
                 pour_info[day_diff]["POP"] = ival
                 pour_info[day_diff]["max_time"] = itime
-            if "max_time" in pour_info[day_diff] and itime > pour_info[day_diff]["max_time"] and "end_time" not in pour_info[day_diff] and int(ival) < 30: # 비/눈 그치는 시간
-                pour_info[day_diff]["end_time"] = itime
+            
+            if int(ival) < 30:
+                if "max_time" in pour_info[day_diff] and itime > pour_info[day_diff]["max_time"] and "end_time" not in pour_info[day_diff]: # 비/눈 그치는 시간
+                    pour_info[day_diff]["end_time"] = itime
 
         if (icat == "PCP" and ival != "강수없음") or (icat == "SNO" and ival != "적설없음"): 
             if ("PCP" not in pour_info[day_diff] or ival == max_num(pour_info[day_diff]["PCP"], ival)) and itime >= 9: # 9시 이후 최대 강수 시간대
                 pour_info[day_diff]["PCP"] = ival
-
-        if icat == "PTY" and now_weather_checked == False: # 현재날씨
-            if ival != "0":
-                now_weather_msg = f"현재 {pty_str[ival]} 옵니다."
-            now_weather_checked = True 
 
         if icat == "TMP" and itime == 15: # 낮 최고기온
             temp_max[day_diff] = max_num(temp_max[day_diff], ival)
@@ -155,8 +148,46 @@ def get_msg() -> str:
     else:
         forecast_msg = ' '.join(result)
 
-    weather_update(now_weather_msg)
     weather_update(forecast_msg)
 
+    
 
-get_msg()
+def get_now_msg() -> str:
+    
+    # 현재 분이 40분 넘으면 현재 시간 + 40분꺼 api 호출하면 됨.
+    # 현재 분이 40분 안넘으면 바로 전 시간 + 40분꺼 api 호출하면 됨. 
+    
+    if n_min >= 40:
+        base_time = f"{n_hour:02d}00"
+    else:
+        base_time = f"{(n_hour-1):02d}00"
+        if base_hour < 0:
+            base_hour = 23
+            base_date = (now_date - datetime.timedelta(days=1)).strftime('%Y%m%d')
+
+    params: dict = {'serviceKey' : serviceKey,
+             'pageNo' : '1', 
+          'numOfRows' : '1000', 
+           'dataType' : 'JSON', 
+          'base_date' : base_date,
+          'base_time' : base_time,
+                 'nx' : fcst_x, 
+                 'ny' : fcst_y }
+        
+    result = {}
+    
+    for item in get_json("getUltraSrtNcst", params):
+        
+        icat, ival = item['category'], item['fcstValue']
+        
+        if icat == "PTY": # 현재날씨
+            if ival != "0":
+                result["PTY"] = ival
+                
+        if icat == "RN1":
+            result["RN1"] = ival
+     
+    weather_update("" if "PTY" not in result else f"현재 {pty_str[result['PTY']]} 옵니다. {'강수' if result['PTY'] != '3' else '적설'}량은 {result['RN1']} 입니다.")
+
+get_now_msg()
+get_forecast_msg()
