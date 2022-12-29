@@ -118,7 +118,7 @@ def get_msg() -> str:
             pour_info[day_diff]["PTY"] = ival if "PTY" not in pour_info[day_diff] else max_num(pour_info[day_diff]["PTY"], ival)
 
         if icat == "POP" and ival != "0": # 강수확률
-            if "POP" not in pour_info[day_diff] or ival == max_num(pour_info[day_diff]["POP"]):
+            if "POP" not in pour_info[day_diff] or ival == max_num(pour_info[day_diff]["POP"], ival):
                 pour_info[day_diff]["POP"] = ival
                 pour_info[day_diff]["max_time"] = itime
             if "max_time" in pour_info[day_diff] and itime > pour_info[day_diff]["max_time"] and "end_time" not in pour_info[day_diff] and int(ival) < 30: # 비/눈 그치는 시간
