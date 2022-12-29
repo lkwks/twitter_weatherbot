@@ -32,14 +32,20 @@ def is_now_before_than(base_time: str, comp_time: str) -> bool:
     return strp_now < strp_comp
 
 def get_pty_str(day_str: str, tup: list) -> str:
-    if tup[0] == "0": return ""
+    if "PTY" not in tup: return ""
+    if "PCP" not in tup: 
+        return f"{day_str} 새벽 {pty_str_np[tup["PTY"]]} 올 수 있습니다(강수확률 {tup["POP"]}%). 9시 이전 잦아들 것으로 예상됩니다. "
     
-    if int(tup[1]) >= 70:
-        result = f"{day_str}은 {pty_str[tup[0]]} 옵니다({tup[3]}시 기준 강수확률 {tup[1]}%)."
+    if int(tup["PCP"]) >= 70:
+        result = f"{day_str}은 {pty_str[tup["PTY"]]} 옵니다({tup["max_time"]}시 기준 강수확률 {tup["POP"]}%)."
     else:
-        result = f"{day_str} 강수확률({pty_str_np[tup[0]]}) 있습니다({tup[3]}시 기준 {tup[1]}%)."
-        
-    return f"{result} 예상 {'강수' if tup[0] != '3' else '적설'}량은 최대 {tup[2]} 이며, {tup[4]}시경 잦아들 것으로 예상됩니다. "
+        result = f"{day_str} ({pty_str_np[tup["PTY"]]}) 올 수 있습니다({tup["max_time"]}시 기준 강수확률 {tup["POP"]}%)."
+    
+    result = f"{result} 예상 {'강수' if tup["PTY"] != '3' else '적설'}량은 최대 {tup["PCP"]} "
+    if "end_time" in up:
+        return f"{result}이며, {tup["end_time"]}시경 잦아들 것으로 예상됩니다. "
+    else:
+        return f"{result}입니다. "
 
 def get_json(uri: str, params: dict) -> list:
     try: 
@@ -94,7 +100,7 @@ def get_msg() -> str:
     # 강수량: PCP, SNO
     # 낮최고기온: TMX
 
-    pour_info = [["0", "-99", "-99", "", ""], ["0", "-99", "-99", "", ""]]
+    pour_info = [{}, {}]
     temp_9 = ["-99", "-99"]
     temp_max = ["-99", "-99"]
     base_date = now_date.strftime('%Y%m%d')
@@ -106,30 +112,32 @@ def get_msg() -> str:
 
         day_diff = day_difference(item['fcstDate'], base_date)
         if day_diff == 2 or (is_now_before_than(base_time, "1200") and day_diff == 1): break
+        icat, ival, itime = item['category'], item['fcstValue'], int(item['fcstTime'][:2])
 
-        if item['category'] == "PTY" and item['fcstValue'] != "0": # 오늘/내일 중 한번이라도 눈/비 소식이 있다면 무조건 그 정보를 기록한다.
-            pour_info[day_diff][0] = max_num(pour_info[day_diff][0], item['fcstValue'])
+        if icat == "PTY" and ival != "0": # 오늘/내일 중 한번이라도 눈/비 소식이 있다면 무조건 그 정보를 기록한다.
+            pour_info[day_diff]["PTY"] = ival if "PTY" not in pour_info[day_diff] else max_num(pour_info[day_diff]["PTY"], ival)
 
-        if item['category'] == "POP" and item['fcstValue'] != "0": 
-            pour_info[day_diff][1] = max_num(pour_info[day_diff][1], item['fcstValue'])
-            if pour_info[day_diff][3] != "" and int(item['fcstTime'][:2]) > int(pour_info[day_diff][3]) and pour_info[day_diff][4] == "" and int(item['fcstValue']) < 30:
-                pour_info[day_diff][4] = item['fcstTime'][:2]
+        if icat == "POP" and ival != "0": # 강수확률
+            if "POP" not in pour_info[day_diff] or ival == max_num(pour_info[day_diff]["POP"]):
+                pour_info[day_diff]["POP"] = ival
+                pour_info[day_diff]["max_time"] = itime
+            if "max_time" in pour_info[day_diff] and itime > pour_info[day_diff]["max_time"] and "end_time" not in pour_info[day_diff] and int(ival) < 30: # 비/눈 그치는 시간
+                pour_info[day_diff]["end_time"] = itime
 
-        if (item['category'] == "PCP" and item['fcstValue'] != "강수없음") or (item['category'] == "SNO" and item['fcstValue'] != "적설없음"): 
-            if item['fcstValue'] == max_num(pour_info[day_diff][2], item['fcstValue']) and int(item['fcstTime'][:2]) >= 9:
-                pour_info[day_diff][2] = item['fcstValue']
-                pour_info[day_diff][3] = item['fcstTime'][:2]
+        if (icat == "PCP" and ival != "강수없음") or (icat == "SNO" and ival != "적설없음"): 
+            if ("PCP" not in pour_info[day_diff] or ival == max_num(pour_info[day_diff]["PCP"], ival) and itime >= 9: # 9시 이후 최대 강수 시간대
+                pour_info[day_diff]["PCP"] = ival
 
-        if item['category'] == "PTY" and now_weather_checked == False:
-            if item['fcstValue'] != "0":
-                now_weather_msg = f"현재 {pty_str[item['fcstValue']]} 옵니다."
+        if icat == "PTY" and now_weather_checked == False: # 현재날씨
+            if ival != "0":
+                now_weather_msg = f"현재 {pty_str[ival]} 옵니다."
             now_weather_checked = True 
 
-        if item['category'] == "TMP" and item['fcstTime'] == "1500":
-            temp_max[day_diff] = max_num(temp_max[day_diff], item['fcstValue'])
+        if icat == "TMP" and itime == "1500": # 낮 최고기온
+            temp_max[day_diff] = max_num(temp_max[day_diff], ival)
 
-        if item['category'] == "TMP" and item['fcstTime'] == "0900":
-            temp_9[day_diff] = item['fcstValue']
+        if icat == "TMP" and itime == "0900": # 아침기온
+            temp_9[day_diff] = ival
 
     result = ["", ""]
 
