@@ -137,7 +137,7 @@ def get_msg() -> str:
         if (i == 0 and is_now_before_than(base_time, "0900")) or i == 1:
             result[i] = f"{get_pty_str(day_str, pour_info[i])}{day_str}의 아침기온은 {temp_9[i]}℃이며, {day_str} 낮 최고기온은 {temp_max[i]}℃ 입니다."
         else:
-            result[i] = f"{get_pty_str(day_str, pour_info[i])}{day_str}의 낮 최고기온은 {temp_max[i]}℃ 입니다."
+            result[i] = f"{get_pty_str(day_str, pour_info[i])}{day_str} 낮 최고기온은 {temp_max[i]}℃ 입니다."
 
     forecast_msg = ""
     if is_now_before_than(base_time, "1200"):
