@@ -159,7 +159,7 @@ def get_now_msg() -> str:
     
     if n_min >= 40:
         base_time = f"{n_hour:02d}00"
-    elif n_nour > 0:
+    elif n_hour > 0:
         base_time = f"{(n_hour-1):02d}00"
     else:
         base_time = "2300"
