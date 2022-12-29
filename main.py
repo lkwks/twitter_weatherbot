@@ -157,6 +157,8 @@ def get_now_msg() -> str:
     # 현재 분이 40분 넘으면 현재 시간 + 40분꺼 api 호출하면 됨.
     # 현재 분이 40분 안넘으면 바로 전 시간 + 40분꺼 api 호출하면 됨. 
     
+    base_date: str = now_date.strftime('%Y%m%d')
+
     if n_min >= 40:
         base_time = f"{n_hour:02d}00"
     elif n_hour > 0:
