@@ -31,9 +31,10 @@ def is_now_before_than(base_time: str, comp_time: str) -> bool:
     strp_comp = datetime.datetime.strptime(comp_time, "%H%M")
     return strp_now < strp_comp
 
-def get_pty_str(day_str: str, tup: list) -> str:
+def get_pty_str(day_str: str, tup: dict) -> str:
     if "PTY" not in tup: return ""
     if "PCP" not in tup: 
+        print(pty_str_np, tup)
         return f"{day_str} 새벽 {pty_str_np[tup["PTY"]]} 올 수 있습니다(강수확률 {tup["POP"]}%). 9시 이전 잦아들 것으로 예상됩니다. "
     
     if int(tup["PCP"]) >= 70:
