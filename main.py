@@ -125,7 +125,7 @@ def get_msg() -> str:
                 pour_info[day_diff]["end_time"] = itime
 
         if (icat == "PCP" and ival != "강수없음") or (icat == "SNO" and ival != "적설없음"): 
-            if ("PCP" not in pour_info[day_diff] or ival == max_num(pour_info[day_diff]["PCP"], ival) and itime >= 9: # 9시 이후 최대 강수 시간대
+            if ("PCP" not in pour_info[day_diff] or ival == max_num(pour_info[day_diff]["PCP"], ival)) and itime >= 9: # 9시 이후 최대 강수 시간대
                 pour_info[day_diff]["PCP"] = ival
 
         if icat == "PTY" and now_weather_checked == False: # 현재날씨
