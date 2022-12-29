@@ -180,7 +180,7 @@ def get_now_msg() -> str:
     
     for item in get_json("getUltraSrtNcst", params):
         
-        icat, ival = item['category'], item['fcstValue']
+        icat, ival = item['category'], item['obsrValue']
         
         if icat == "PTY": # 현재날씨
             if ival != "0":
