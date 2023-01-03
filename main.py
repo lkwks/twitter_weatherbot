@@ -101,6 +101,8 @@ def get_forecast_msg() -> str:
     pour_info = [{}, {}]
     temp_9 = ["-99", "-99"]
     temp_max = ["-99", "-99"]
+    mart_day = [False, False]
+    date_obj = [datetime.date.today(), datetime.date.today()+datetime.timedelta(days=1)]
     base_date = now_date.strftime('%Y%m%d')
     base_time = now_date.strftime('%H%M')
     
@@ -109,6 +111,10 @@ def get_forecast_msg() -> str:
         day_diff = day_difference(item['fcstDate'], base_date)
         if day_diff == 2 or (is_now_before_than(base_time, "1200") and day_diff == 1): break
         icat, ival, itime = item['category'], item['fcstValue'], int(item['fcstTime'][:2])
+        
+        womonth = (date_obj[day_diff].day - 1) // 7
+        if date_obj[day_diff].weekday() == 6 and (womonth == 1 or womonth == 3):
+            mart_day[day_diff] = True;
 
         if icat == "PTY" and ival != "0": # 오늘/내일 중 한번이라도 눈/비 소식이 있다면 무조건 그 정보를 기록한다.
             pour_info[day_diff]["PTY"] = ival if "PTY" not in pour_info[day_diff] else max_num(pour_info[day_diff]["PTY"], ival)
@@ -139,6 +145,7 @@ def get_forecast_msg() -> str:
             result[i] = f"{get_pty_str(day_str, pour_info[i])}{day_str}의 아침기온은 {temp_9[i]}℃이며, {day_str} 낮 최고기온은 {temp_max[i]}℃ 입니다."
         else:
             result[i] = f"{get_pty_str(day_str, pour_info[i])}{day_str} 낮 최고기온은 {temp_max[i]}℃ 입니다."
+        if mart_day[i]: weather_update(f"{day_str}은 마트 휴무일입니다.")
 
     forecast_msg = ""
     if is_now_before_than(base_time, "1200"):
