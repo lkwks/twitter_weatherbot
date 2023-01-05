@@ -105,8 +105,9 @@ def get_forecast_msg() -> str:
     date_obj = [datetime.date.today(), datetime.date.today()+datetime.timedelta(days=1)]
     base_date = now_date.strftime('%Y%m%d')
     base_time = now_date.strftime('%H%M')
+    json_list =  get_json("getVilageFcst", params)
     
-    for item in get_json("getVilageFcst", params):
+    for item in json_list:
 
         day_diff = day_difference(item['fcstDate'], base_date)
         if day_diff == 2 or (is_now_before_than(base_time, "1200") and day_diff == 1): break
@@ -124,11 +125,6 @@ def get_forecast_msg() -> str:
                 pour_info[day_diff]["POP"] = ival
                 pour_info[day_diff]["max_time"] = itime
             
-            if int(ival) < 30:
-                if "max_time" in pour_info[day_diff] and itime > pour_info[day_diff]["max_time"] and "end_time" not in pour_info[day_diff]: # 비/눈 그치는 시간
-                    pour_info[day_diff]["end_time"] = itime
-                    print(pour_info[day_diff]["max_time"], itime)
-
         if (icat == "PCP" and ival != "강수없음") or (icat == "SNO" and ival != "적설없음"): 
             if ("PCP" not in pour_info[day_diff] or ival == max_num(pour_info[day_diff]["PCP"], ival)) and itime >= 9: # 9시 이후 최대 강수 시간대
                 pour_info[day_diff]["PCP"] = ival
@@ -139,6 +135,18 @@ def get_forecast_msg() -> str:
         if icat == "TMP" and itime == 9: # 아침기온
             temp_9[day_diff] = ival
 
+            
+            
+    for item in json_list:
+        day_diff = day_difference(item['fcstDate'], base_date)
+        if day_diff == 2 or (is_now_before_than(base_time, "1200") and day_diff == 1): break
+        if  "max_time" not in pour_info[day_diff] or "end_time" in pour_info[day_diff]: continue
+        
+        icat, ival, itime = item['category'], item['fcstValue'], int(item['fcstTime'][:2])
+        if icat == "POP" and and itime > pour_info[day_diff]["max_time"] and int(ival) < 30:
+            pour_info[day_diff]["end_time"] = itime # 비/눈 그치는 시간
+            
+            
     result = ["", ""]
 
     for i, day_str in enumerate(["오늘", "내일"]):
