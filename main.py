@@ -143,7 +143,7 @@ def get_forecast_msg() -> str:
         if  "max_time" not in pour_info[day_diff] or "end_time" in pour_info[day_diff]: continue
         
         icat, ival, itime = item['category'], item['fcstValue'], int(item['fcstTime'][:2])
-        if icat == "POP" and and itime > pour_info[day_diff]["max_time"] and int(ival) < 30:
+        if icat == "POP" and itime > pour_info[day_diff]["max_time"] and int(ival) < 30:
             pour_info[day_diff]["end_time"] = itime # 비/눈 그치는 시간
             
             
