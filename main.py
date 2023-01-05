@@ -121,9 +121,10 @@ def get_forecast_msg() -> str:
             pour_info[day_diff]["PTY"] = ival if "PTY" not in pour_info[day_diff] else max_num(pour_info[day_diff]["PTY"], ival)
 
         if icat == "POP": # 강수확률
-            if ("POP" not in pour_info[day_diff] or ival == max_num(pour_info[day_diff]["POP"], ival)) and ival != "0":
-                pour_info[day_diff]["POP"] = ival
+            if ("POP" not in pour_info[day_diff] or (int(ival) > pour_info[day_diff]["POP"] and pour_info[day_diff]["POP"] < 70)) and ival != "0":
+                pour_info[day_diff]["POP"] = int(ival)
                 pour_info[day_diff]["max_time"] = itime
+                # pour_info[day_diff]["POP"]값이 70 미만이라면 그 중 최댓값을 갖는 시간대를 기록. 70이라면 더 이상 이 값을 갱신하지 않음.
             
         if (icat == "PCP" and ival != "강수없음") or (icat == "SNO" and ival != "적설없음"): 
             if ("PCP" not in pour_info[day_diff] or ival == max_num(pour_info[day_diff]["PCP"], ival)) and itime >= 9: # 9시 이후 최대 강수 시간대
