@@ -43,7 +43,7 @@ def get_pty_str(day_str: str, tup: dict) -> str:
         result = f"{day_str} ({pty_str_np[tup['PTY']]}) 올 수 있습니다({tup['max_time']}시 기준 강수확률 {tup['POP']}%)."
     
     result = f"{result} 예상 {'강수' if tup['PTY'] != '3' else '적설'}량은 최대 {tup['PCP']} "
-    if "end_time" in up:
+    if "end_time" in tup:
         return f"{result}이며, {tup['end_time']}시경 잦아들 것으로 예상됩니다. "
     else:
         return f"{result}입니다. "
