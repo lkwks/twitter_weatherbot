@@ -127,6 +127,7 @@ def get_forecast_msg() -> str:
             if int(ival) < 30:
                 if "max_time" in pour_info[day_diff] and itime > pour_info[day_diff]["max_time"] and "end_time" not in pour_info[day_diff]: # 비/눈 그치는 시간
                     pour_info[day_diff]["end_time"] = itime
+                    print(pour_info[day_diff]["max_time"], itime)
 
         if (icat == "PCP" and ival != "강수없음") or (icat == "SNO" and ival != "적설없음"): 
             if ("PCP" not in pour_info[day_diff] or ival == max_num(pour_info[day_diff]["PCP"], ival)) and itime >= 9: # 9시 이후 최대 강수 시간대
