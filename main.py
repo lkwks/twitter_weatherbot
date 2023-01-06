@@ -32,17 +32,21 @@ def is_now_before_than(base_time: str, comp_time: str) -> bool:
     strp_comp = datetime.datetime.strptime(comp_time, "%H%M")
     return strp_now < strp_comp
 
+def add_mm(pcp: str) -> str:
+    return f"{pcp}mm" if all(c.isnumeric() for c in tup["PCP"]) else pcp
+
 def get_pty_str(day_str: str, tup: dict) -> str:
     if "PTY" not in tup: return ""
-    if "PCP" not in tup: 
+    if "PCP" not in tup: # 9시 이전에 비/눈 그치면 그냥 강수량 정보 생략. 그 시간에 밖에 있는 경우 없으니까 안궁..
         return f"{day_str} 새벽 {pty_str_np[tup['PTY']]} 올 수 있습니다(강수확률 {tup['POP']}%). 9시 이전 잦아들 것으로 예상됩니다. "
+    
     
     if int(tup["POP"]) >= 70:
         result = f"{day_str} {pty_str[tup['PTY']]} 옵니다({tup['max_time']}시 기준 강수확률 {tup['POP']}%)."
     else:
         result = f"{day_str} ({pty_str_np[tup['PTY']]}) 올 수 있습니다({tup['max_time']}시 기준 강수확률 {tup['POP']}%)."
     
-    result = f"{result} 예상 {'강수' if tup['PTY'] != '3' else '적설'}량은 최대 {tup['PCP']} "
+    result = f"{result} 예상 {'강수' if tup['PTY'] != '3' else '적설'}량은 최대 {add_mm(tup['PCP'])} "
     if "end_time" in tup:
         return f"{result}이며, {tup['end_time']}시경 잦아들 것으로 예상됩니다. "
     else:
@@ -206,7 +210,7 @@ def get_now_msg() -> str:
         if icat == "RN1":
             result["RN1"] = ival
      
-    weather_update("" if "PTY" not in result else f"현재 {pty_str[result['PTY']]} 옵니다. {'강수' if result['PTY'] != '3' else '적설'}량은 {result['RN1']} 입니다.")
+    weather_update("" if "PTY" not in result else f"현재 {pty_str[result['PTY']]} 옵니다. {'강수' if result['PTY'] != '3' else '적설'}량은 {add_mm(result['RN1'])} 입니다.")
 
 get_now_msg()
 get_forecast_msg()
