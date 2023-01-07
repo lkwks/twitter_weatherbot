@@ -148,7 +148,7 @@ def get_forecast_msg() -> str:
             
     result = ["", ""]
 
-    date_obj = [datetime.date.today(), datetime.date.today()+datetime.timedelta(days=1)]
+    date_obj = [datetime.date.today(pytz.timezone('Asia/Seoul'))+datetime.timedelta(days=i) for i in range(2)]
     womonth = [[False, "둘", False, "넷", False][(date_obj[i].day - 1) // 7] for i in range(2)]
 
     for i, day_str in enumerate(["오늘", "내일"]):
