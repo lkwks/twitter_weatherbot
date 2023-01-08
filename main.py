@@ -1,13 +1,16 @@
 import tweepy, datetime, requests, pytz, re
 from os import environ
 
-fcst_x: str = environ["fcst_x"]
-fcst_y: str = environ["fcst_y"]
-serviceKey: str = environ["serviceKey"]
-
 now_date = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
 pty_str = {"1": "비가", "2": "비와 눈이", "3": "눈이", "4": "소나기가"}
 pty_str_np = {"1": "비", "2": "비와 눈", "3": "눈", "4": "소나기"}
+params: dict = \
+        {'serviceKey' : environ["serviceKey"],
+             'pageNo' : '1', 
+          'numOfRows' : '1000', 
+           'dataType' : 'JSON', 
+                 'nx' : environ["fcst_x"], 
+                 'ny' : environ["fcst_y"] }
 
 
 def tweet_update(msg: str) -> None:
@@ -73,25 +76,17 @@ def max_num(num1_str: str, num2_str: str) -> str:
 
 def get_forecast_msg() -> str:
     
-    base_date: str = now_date.strftime('%Y%m%d')
+    params['base_date'] = now_date.strftime('%Y%m%d')
     
     time_num = ((now_date.hour * 60 + now_date.minute - 130)//180)*180+130 # API가 생성돼 있는 가장 최근 시간을 구하는 
     if time_num < 0: 
         time_num = 1390
-        base_date = (now_date - datetime.timedelta(days=1)).strftime('%Y%m%d')
+        params['base_date'] = (now_date - datetime.timedelta(days=1)).strftime('%Y%m%d')
 
     base_hour, base_minute = divmod(time_num, 60)
-    base_time = f"{base_hour:02d}{base_minute:02d}"
-
-    params: dict = \
-        {'serviceKey' : serviceKey,
-             'pageNo' : '1', 
-          'numOfRows' : '1000', 
-           'dataType' : 'JSON', 
-          'base_date' : base_date,
-          'base_time' : base_time,
-                 'nx' : fcst_x, 
-                 'ny' : fcst_y }
+    params['base_time'] = f"{base_hour:02d}{base_minute:02d}"
+    
+    json_list = get_json("getVilageFcst", params)
     
     # 오늘/내일 비눈소식, 강수확률, 강수량, 내일 아침기온, 내일 낮최고기온 정도만 추출하면 됨.
     # 현재 시간이 낮 12시 이전이라면 오늘꺼만 출력해도 됨. 
@@ -107,7 +102,6 @@ def get_forecast_msg() -> str:
     temp_max = ["-99", "-99"]
     base_date = now_date.strftime('%Y%m%d')
     base_time = now_date.strftime('%H%M')
-    json_list =  get_json("getVilageFcst", params)
     
     for item in json_list:
 
@@ -164,35 +158,25 @@ def get_forecast_msg() -> str:
 
     
 
-def get_now_msg() -> str:
+def get_now_msg() -> None: # 현재 눈/비 오면 그 내용을 트윗으로 업데이트
     
     # 현재 분이 40분 넘으면 현재 시간 + 40분꺼 api 호출하면 됨.
     # 현재 분이 40분 안넘으면 바로 전 시간 + 40분꺼 api 호출하면 됨. 
     
-    base_date: str = now_date.strftime('%Y%m%d')
+    params['base_date'] = now_date.strftime('%Y%m%d')
     if now_date.minute >= 40:
-        base_time = f"{now_date.hour:02d}00"
+        params['base_time'] = f"{now_date.hour:02d}00"
     elif now_date.hour > 0:
-        base_time = f"{(now_date.hour-1):02d}00"
+        params['base_time'] = f"{(now_date.hour-1):02d}00"
     else:
-        base_time = "2300"
-        base_date = (now_date - datetime.timedelta(days=1)).strftime('%Y%m%d')
+        params['base_time'] = "2300"
+        params['base_date'] = (now_date - datetime.timedelta(days=1)).strftime('%Y%m%d')
 
-    params: dict = \
-        {'serviceKey' : serviceKey,
-             'pageNo' : '1', 
-          'numOfRows' : '1000', 
-           'dataType' : 'JSON', 
-          'base_date' : base_date,
-          'base_time' : base_time,
-                 'nx' : fcst_x, 
-                 'ny' : fcst_y }
-        
     result = {}
     for item in get_json("getUltraSrtNcst", params):
         icat, ival = item['category'], item['obsrValue']
         if icat == "PTY" and ival != "0": # 현재날씨
-            result["PTY"] = ival    
+            result["PTY"] = ival
         if icat == "RN1":
             result["RN1"] = ival
     
@@ -200,7 +184,7 @@ def get_now_msg() -> str:
         tweet_update(f"현재 {pty_str[result['PTY']]} 옵니다. {'강수' if result['PTY'] != '3' else '적설'}량은 {add_mm(result['RN1'])} 입니다.")
 
         
-def get_mart_msg():
+def get_mart_msg() -> None: # 마트 휴일 정보를 트윗으로 업데이트
     date_obj = [now_date, now_date+datetime.timedelta(days=1)]
     womonth = [[False, "둘", False, "넷", False][(date_obj[i].day - 1) // 7] for i in range(2)]
     for i, day_str in enumerate(["오늘", "내일"]):
