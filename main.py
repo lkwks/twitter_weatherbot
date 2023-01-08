@@ -172,7 +172,7 @@ def get_now_msg() -> str:
     base_date: str = now_date.strftime('%Y%m%d')
     if now_date.minute >= 40:
         base_time = f"{now_date.hour:02d}00"
-    elif n_hour > 0:
+    elif now_date.hour > 0:
         base_time = f"{(now_date.hour-1):02d}00"
     else:
         base_time = "2300"
