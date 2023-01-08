@@ -6,18 +6,17 @@ fcst_y: str = environ["fcst_y"]
 serviceKey: str = environ["serviceKey"]
 
 now_date = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
-n_hour, n_min = now_date.hour, now_date.minute
 pty_str = {"1": "비가", "2": "비와 눈이", "3": "눈이", "4": "소나기가"}
 pty_str_np = {"1": "비", "2": "비와 눈", "3": "눈", "4": "소나기"}
 
 
-def weather_update(weather_msg: str) -> None:
-    if weather_msg == "": return
+def tweet_update(msg: str) -> None:
+    if msg == "": return
     auth = tweepy.OAuthHandler(environ["consumer_key"], environ["consumer_secret"])
     auth.set_access_token(environ["access_token"], environ["access_token_secret"])
     api = tweepy.API(auth)
     try:
-        api.update_status(status=weather_msg)
+        api.update_status(status=msg)
     except Exception as e:
         print(e)
 
@@ -39,7 +38,6 @@ def get_pty_str(day_str: str, tup: dict) -> str:
     if "PTY" not in tup: return ""
     if "PCP" not in tup: # 9시 이전에 비/눈 그치면 그냥 강수량 정보 생략. 그 시간에 밖에 있는 경우 없으니까 안궁..
         return f"{day_str} 새벽 {pty_str_np[tup['PTY']]} 올 수 있습니다(강수확률 {tup['POP']}%). 9시 이전 잦아들 것으로 예상됩니다. "
-    
     
     if int(tup["POP"]) >= 70:
         result = f"{day_str} {pty_str[tup['PTY']]} 옵니다({tup['max_time']}시 기준 강수확률 {tup['POP']}%)."
@@ -76,7 +74,8 @@ def max_num(num1_str: str, num2_str: str) -> str:
 def get_forecast_msg() -> str:
     
     base_date: str = now_date.strftime('%Y%m%d')
-    time_num = ((n_hour * 60 + n_min - 130)//180)*180+130
+    
+    time_num = ((now_date.hour * 60 + now_date.minute - 130)//180)*180+130 # API가 생성돼 있는 가장 최근 시간을 구하는 
     if time_num < 0: 
         time_num = 1390
         base_date = (now_date - datetime.timedelta(days=1)).strftime('%Y%m%d')
@@ -84,7 +83,8 @@ def get_forecast_msg() -> str:
     base_hour, base_minute = divmod(time_num, 60)
     base_time = f"{base_hour:02d}{base_minute:02d}"
 
-    params: dict = {'serviceKey' : serviceKey,
+    params: dict = \
+        {'serviceKey' : serviceKey,
              'pageNo' : '1', 
           'numOfRows' : '1000', 
            'dataType' : 'JSON', 
@@ -113,6 +113,7 @@ def get_forecast_msg() -> str:
 
         day_diff = day_difference(item['fcstDate'], base_date)
         if day_diff == 2 or (is_now_before_than(base_time, "1200") and day_diff == 1): break
+            
         icat, ival, itime = item['category'], item['fcstValue'], int(item['fcstTime'][:2])
         
         if icat == "PTY" and ival != "0": # 오늘/내일 중 한번이라도 눈/비 소식이 있다면 무조건 그 정보를 기록한다.
@@ -122,9 +123,9 @@ def get_forecast_msg() -> str:
             if ("POP" not in pour_info[day_diff] or (int(ival) > pour_info[day_diff]["POP"] and pour_info[day_diff]["POP"] < 70)) and ival != "0":
                 pour_info[day_diff]["POP"] = int(ival)
                 pour_info[day_diff]["max_time"] = itime
-                # pour_info[day_diff]["POP"]값이 70 미만이라면 그 중 최댓값을 갖는 시간대를 기록. 70이라면 더 이상 이 값을 갱신하지 않음.
+                # pour_info[day_diff]["POP"]값이 70 미만이라면 그 중 최댓값을 갖는 시간대를 기록. 70이라면 그때 비/눈 오기 시작한다고 보고 더 이상 이 값을 갱신하지 않음.
             
-        if (icat == "PCP" and ival != "강수없음") or (icat == "SNO" and ival != "적설없음"): 
+        if (icat == "PCP" or icat == "SNO") and any(c.isnumeric() for c in ival): 
             if ("PCP" not in pour_info[day_diff] or ival == max_num(pour_info[day_diff]["PCP"], ival)) and itime >= 9: # 9시 이후 최대 강수 시간대
                 pour_info[day_diff]["PCP"] = ival
 
@@ -135,38 +136,31 @@ def get_forecast_msg() -> str:
             temp_9[day_diff] = ival
 
             
-            
-    for item in json_list:
-        day_diff = day_difference(item['fcstDate'], base_date)
-        if day_diff == 2 or (is_now_before_than(base_time, "1200") and day_diff == 1): break
-        if  "max_time" not in pour_info[day_diff] or "end_time" in pour_info[day_diff]: continue
+    if any("max_time" in pour_info[i] for i in range(2)):  # 비/눈이 온다 하면, 그치는 시간 정보를 찾는 for loop를 추가로 수행
+        for item in json_list:
+            day_diff = day_difference(item['fcstDate'], base_date)
+            if day_diff == 2 or (is_now_before_than(base_time, "1200") and day_diff == 1): break
+            if "end_time" in pour_info[day_diff]: continue
         
-        icat, ival, itime = item['category'], item['fcstValue'], int(item['fcstTime'][:2])
-        if icat == "POP" and itime > pour_info[day_diff]["max_time"] and int(ival) < 30:
-            pour_info[day_diff]["end_time"] = itime # 비/눈 그치는 시간
+            icat, ival, itime = item['category'], item['fcstValue'], int(item['fcstTime'][:2])
+            if icat == "POP" and itime > pour_info[day_diff]["max_time"] and int(ival) < 30:
+                pour_info[day_diff]["end_time"] = itime
             
             
     result = ["", ""]
 
-    date_obj = [now_date, now_date+datetime.timedelta(days=1)]
-    womonth = [[False, "둘", False, "넷", False][(date_obj[i].day - 1) // 7] for i in range(2)]
-
     for i, day_str in enumerate(["오늘", "내일"]):
-        if (i == 0 and is_now_before_than(base_time, "0900")) or i == 1:
-            result[i] = f"{get_pty_str(day_str, pour_info[i])}{day_str}의 아침기온은 {temp_9[i]}℃이며, {day_str} 낮 최고기온은 {temp_max[i]}℃ 입니다."
-        else:
+        if i == 0 and is_now_before_than(base_time, "0900") == False:
             result[i] = f"{get_pty_str(day_str, pour_info[i])}{day_str} 낮 최고기온은 {temp_max[i]}℃ 입니다."
-        if date_obj[i].weekday() == 6 and womonth[i]: weather_update(f"{day_str}은 대형마트 휴무일인 이달 {womonth[i]}째주 일요일 입니다.")
+        else:
+            result[i] = f"{get_pty_str(day_str, pour_info[i])}{day_str}의 아침기온은 {temp_9[i]}℃이며, {day_str} 낮 최고기온은 {temp_max[i]}℃ 입니다."
 
-    forecast_msg = ""
     if is_now_before_than(base_time, "1200"):
-        forecast_msg = result[0]
+        tweet_update(result[0])
     elif is_now_before_than(base_time, "1800") == False:
-        forecast_msg = result[1]
+        tweet_update(result[1])
     else:
-        forecast_msg = ' '.join(result)
-
-    weather_update(forecast_msg)
+        tweet_update(' '.join(result))
 
     
 
@@ -176,16 +170,16 @@ def get_now_msg() -> str:
     # 현재 분이 40분 안넘으면 바로 전 시간 + 40분꺼 api 호출하면 됨. 
     
     base_date: str = now_date.strftime('%Y%m%d')
-
-    if n_min >= 40:
-        base_time = f"{n_hour:02d}00"
+    if now_date.minute >= 40:
+        base_time = f"{now_date.hour:02d}00"
     elif n_hour > 0:
-        base_time = f"{(n_hour-1):02d}00"
+        base_time = f"{(now_date.hour-1):02d}00"
     else:
         base_time = "2300"
         base_date = (now_date - datetime.timedelta(days=1)).strftime('%Y%m%d')
 
-    params: dict = {'serviceKey' : serviceKey,
+    params: dict = \
+        {'serviceKey' : serviceKey,
              'pageNo' : '1', 
           'numOfRows' : '1000', 
            'dataType' : 'JSON', 
@@ -195,19 +189,25 @@ def get_now_msg() -> str:
                  'ny' : fcst_y }
         
     result = {}
-    
     for item in get_json("getUltraSrtNcst", params):
-        
         icat, ival = item['category'], item['obsrValue']
-        
-        if icat == "PTY": # 현재날씨
-            if ival != "0":
-                result["PTY"] = ival
-                
+        if icat == "PTY" and ival != "0": # 현재날씨
+            result["PTY"] = ival    
         if icat == "RN1":
             result["RN1"] = ival
-     
-    weather_update("" if "PTY" not in result else f"현재 {pty_str[result['PTY']]} 옵니다. {'강수' if result['PTY'] != '3' else '적설'}량은 {add_mm(result['RN1'])} 입니다.")
+    
+    if "PTY" in result:
+        tweet_update(f"현재 {pty_str[result['PTY']]} 옵니다. {'강수' if result['PTY'] != '3' else '적설'}량은 {add_mm(result['RN1'])} 입니다.")
 
+        
+def get_mart_msg():
+    date_obj = [now_date, now_date+datetime.timedelta(days=1)]
+    womonth = [[False, "둘", False, "넷", False][(date_obj[i].day - 1) // 7] for i in range(2)]
+    for i, day_str in enumerate(["오늘", "내일"]):
+        if date_obj[i].weekday() == 6 and womonth[i]:
+            tweet_update(f"{day_str}은 대형마트 휴무일인 이달 {womonth[i]}째주 일요일 입니다.")
+        
+        
 get_now_msg()
 get_forecast_msg()
+get_mart_msg()
