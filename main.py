@@ -175,7 +175,7 @@ def get_now_msg() -> None: # 현재 눈/비 오면 그 내용을 트윗으로 �
     result = {}
     for item in get_json("getUltraSrtNcst", params):
         icat, ival = item['category'], item['obsrValue']
-        if icat == "PTY" and ival != "0": # 현재날씨
+        if icat == "PTY" and int(ival) >= 1 and int(ival) <= 4: # 현재날씨
             result["PTY"] = ival
         if icat == "RN1":
             result["RN1"] = ival
