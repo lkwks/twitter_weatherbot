@@ -130,15 +130,14 @@ def get_forecast_msg() -> str:
             temp_9[day_diff] = ival
 
             
-    if any("max_time" in pour_info[i] for i in range(2)):  # 비/눈이 온다 하면, 그치는 시간 정보를 찾는 for loop를 추가로 수행
-        for item in json_list:
-            day_diff = day_difference(item['fcstDate'], base_date)
-            if day_diff == 2 or (is_now_before_than(base_time, "1200") and day_diff == 1): break
-            if "end_time" in pour_info[day_diff]: continue
+    for item in json_list: # 비/눈이 오는 경우, 그치는 시간 정보를 찾 for loop를 추가로 수행
+        day_diff = day_difference(item['fcstDate'], base_date)
+        if day_diff == 2 or (is_now_before_than(base_time, "1200") and day_diff == 1): break
+        if "end_time" in pour_info[day_diff] or "max_time" not in pour_info[day_diff]: continue
         
-            icat, ival, itime = item['category'], item['fcstValue'], int(item['fcstTime'][:2])
-            if icat == "POP" and itime > pour_info[day_diff]["max_time"] and int(ival) < 30:
-                pour_info[day_diff]["end_time"] = itime
+        icat, ival, itime = item['category'], item['fcstValue'], int(item['fcstTime'][:2])
+        if icat == "POP" and itime > pour_info[day_diff]["max_time"] and int(ival) < 30:
+            pour_info[day_diff]["end_time"] = itime
             
             
     result = ["", ""]
