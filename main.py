@@ -35,7 +35,7 @@ def is_now_before_than(base_time: str, comp_time: str) -> bool:
     return strp_now < strp_comp
 
 def add_mm(pcp: str) -> str:
-    return f"{pcp}mm" if all(c.isnumeric() for c in tup["PCP"]) else pcp
+    return f"{pcp}mm" if all(c.isnumeric() for c in pcp) else pcp
 
 def get_pty_str(day_str: str, tup: dict) -> str:
     if "PTY" not in tup: return ""
