@@ -45,7 +45,7 @@ def get_pty_str(day_str: str, tup: dict) -> str:
     if int(tup["POP"]) >= 70:
         result = f"{day_str} {pty_str[tup['PTY']]} 옵니다({tup['max_time']}시 기준 강수확률 {tup['POP']}%)."
     else:
-        result = f"{day_str} ({pty_str_np[tup['PTY']]}) 올 수 있습니다({tup['max_time']}시 기준 강수확률 {tup['POP']}%)."
+        result = f"{day_str} {pty_str_np[tup['PTY']]} 올 수 있습니다({tup['max_time']}시 기준 강수확률 {tup['POP']}%)."
     
     result = f"{result} 예상 {'강수' if tup['PTY'] != '3' else '적설'}량은 최대 {add_mm(tup['PCP'])} "
     if "end_time" in tup:
@@ -136,7 +136,7 @@ def get_forecast_msg() -> str:
         if "end_time" in pour_info[day_diff] or "max_time" not in pour_info[day_diff]: continue
         
         icat, ival, itime = item['category'], item['fcstValue'], int(item['fcstTime'][:2])
-        if icat == "POP" and itime > pour_info[day_diff]["max_time"] and int(ival) < 30:
+        if icat == "POP" and itime > pour_info[day_diff]["max_time"] and int(ival) <= 30:
             pour_info[day_diff]["end_time"] = itime
             
             
